@@ -31,26 +31,38 @@
     }
     #search::placeholder { color: #666; }
 
-    /* === 9 ПЛИТОК === */
-    .tiles {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-    .tile {
-      background: #1e1e1e;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 12px 4px;
-      text-align: center;
-      cursor: pointer;
-      font-size: 12px;
-      line-height: 1.3;
-      transition: background 0.15s;
-    }
-    .tile:hover { background: #2a2a2a; }
-    .tile .icon { font-size: 22px; display: block; margin-bottom: 4px; }
+/* === 12 ПЛИТОК (4×3, квадратные) === */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.tile {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 8px 4px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.3;
+  transition: background 0.15s;
+  aspect-ratio: 1 / 1;        /* ← КВАДРАТ */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.tile:hover { background: #2a2a2a; }
+
+.tile .icon {
+  font-size: 24px;
+  display: block;
+  margin-bottom: 6px;
+}
 
     /* === ЭКРАНЫ === */
     .screen { display: none; }
@@ -152,17 +164,28 @@
   <div id="screen-home" class="screen active">
     <input id="search" placeholder="🔍 Поиск (3+ символа)...">
 
-    <div class="tiles">
-      <div class="tile" data-nav="wishlist"><span class="icon">⭐</span>Wishlist</div>
-      <div class="tile" data-nav="installed"><span class="icon">✅</span>Установлено</div>
-      <div class="tile" data-nav="removed"><span class="icon">🗑️</span>Удалено</div>
-      <div class="tile" data-nav="docs-app"><span class="icon">📚</span>App Docs</div>
-      <div class="tile" data-nav="docs-github"><span class="icon">🐙</span>GitHub Docs</div>
-      <div class="tile" data-nav="docs-firebase"><span class="icon">🔥</span>Firebase Docs</div>
-      <div class="tile" data-nav="favorite"><span class="icon">❤️</span>Избранное</div>
-      <div class="tile" data-nav="all"><span class="icon">📋</span>Все</div>
-      <div class="tile" data-nav="add"><span class="icon">➕</span>Добавить</div>
-    </div>
+<div class="tiles">
+  <!-- Ряд 1: статусы -->
+  <div class="tile" data-nav="wishlist"><span class="icon">⭐</span>Wishlist</div>
+  <div class="tile" data-nav="installed"><span class="icon">✅</span>Установлено</div>
+  <div class="tile" data-nav="removed"><span class="icon">🗑️</span>Удалено</div>
+
+  <!-- Ряд 2: документация -->
+  <div class="tile" data-nav="docs-app"><span class="icon">📚</span>App Docs</div>
+  <div class="tile" data-nav="docs-github"><span class="icon">🐙</span>GitHub Docs</div>
+  <div class="tile" data-nav="docs-firebase"><span class="icon">🔥</span>Firebase Docs</div>
+
+  <!-- Ряд 3: внешние ссылки -->
+  <div class="tile" data-nav="link-play"><span class="icon">🛒</span>Google Play</div>
+  <div class="tile" data-nav="link-github"><span class="icon">🐙</span>GitHub Project</div>
+  <div class="tile" data-nav="link-firebase"><span class="icon">🔥</span>Firebase Console</div>
+
+  <!-- Ряд 4: действия -->
+  <div class="tile" data-nav="favorite"><span class="icon">❤️</span>Избранное</div>
+  <div class="tile" data-nav="all"><span class="icon">📋</span>Все</div>
+  <div class="tile" data-nav="add"><span class="icon">➕</span>Добавить</div>
+
+</div>
   </div>
 
   <!-- ===== ЭКРАН РАЗДЕЛА ===== -->
@@ -255,22 +278,39 @@
       window.scrollTo(0, 0);
     }
 
-    document.querySelectorAll('[data-nav]').forEach(el => {
-      el.addEventListener('click', (e) => {
-        const nav = el.dataset.nav;
-        if (nav === 'home') { showScreen('home'); return; }
-        if (nav === 'add') { openForm(null); return; }
-        if (nav === 'all') { renderAll(); showScreen('all'); return; }
-        if (nav.startsWith('docs-')) {
-          const map = { 'docs-app': 'help/index.html', 'docs-github': 'help/github.html', 'docs-firebase': 'help/firebase.html' };
-          window.location.href = map[nav];
-          return;
-        }
-        // разделы
-        renderSection(nav);
-        showScreen('section');
-      });
-    });
+document.querySelectorAll('[data-nav]').forEach(el => {
+  el.addEventListener('click', (e) => {
+    const nav = el.dataset.nav;
+    if (nav === 'home') { showScreen('home'); return; }
+    if (nav === 'add') { openForm(null); return; }
+    if (nav === 'all') { renderAll(); showScreen('all'); return; }
+
+    // === ВНЕШНИЕ ССЫЛКИ ===
+    if (nav === 'link-play') {
+      window.open('https://play.google.com/apps?hl=ru', '_blank');
+      return;
+    }
+    if (nav === 'link-github') {
+      window.open('https://github.com/core-samurai/app-tracker', '_blank');
+      return;
+    }
+    if (nav === 'link-firebase') {
+      window.open('https://console.firebase.google.com/u/0/project/app-tracker-407bc/database/app-tracker-407bc-default-rtdb/data', '_blank');
+      return;
+    }
+
+    // === ДОКУМЕНТАЦИЯ ===
+    if (nav.startsWith('docs-')) {
+      const map = { 'docs-app': 'help/index.html', 'docs-github': 'help/github.html', 'docs-firebase': 'help/firebase.html' };
+      window.location.href = map[nav];
+      return;
+    }
+
+    // разделы
+    renderSection(nav);
+    showScreen('section');
+  });
+});
 
     // ===== РЕНДЕР КАРТОЧКИ =====
     function renderCard(app) {
