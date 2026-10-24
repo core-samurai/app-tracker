@@ -435,22 +435,28 @@
       showScreen('home');
     });
 
-    // ===== FIREBASE =====
-    signInAnonymously(auth).then(() => {
-      onValue(ref(db, 'apps'), (snapshot) => {
-        allApps = [];
-        snapshot.forEach(child => allApps.push({ id: child.key, ...child.val() }));
-        // обновить текущий экран, если он открыт
-        if (screens.section.classList.contains('active')) {
-          const title = document.getElementById('section-title').textContent;
-          if (title.includes('Wishlist')) renderSection('wishlist');
-          else if (title.includes('Установлено')) renderSection('installed');
-          else if (title.includes('Удалено')) renderSection('removed');
-          else if (title.includes('Избранное')) renderSection('favorite');
-        }
-        if (screens.all.classList.contains('active')) renderAll();
-      });
-    });
+		// ===== FIREBASE =====
+		signInAnonymously(auth).then(() => {
+		  onValue(ref(db, 'apps'), (snapshot) => {
+		    const data = snapshot.val();
+		    allApps = [];
+		    if (data) {
+		      Object.entries(data).forEach(([key, value]) => {
+		        allApps.push({ id: key, ...value });
+		      });
+		    }
+
+		    // Обновить текущий экран, если он открыт
+		    if (screens.section.classList.contains('active')) {
+		      const title = document.getElementById('section-title').textContent;
+		      if (title.includes('Wishlist')) renderSection('wishlist');
+		      else if (title.includes('Установлено')) renderSection('installed');
+		      else if (title.includes('Удалено')) renderSection('removed');
+		      else if (title.includes('Избранное')) renderSection('favorite');
+		    }
+		    if (screens.all.classList.contains('active')) renderAll();
+		  });
+		});
   </script>
 </body>
 </html>
