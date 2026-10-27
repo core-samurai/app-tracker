@@ -126,14 +126,13 @@
 			letter-spacing: 0.5px;
 			word-wrap: break-word; /* ← длинные названия ломаются */
 		}
-
+/* Иконки статуса — без пилюли, только иконка */
 .app-meta-status {
 	display: inline-flex;
 	align-items: center;
 	padding: 0;
 	border: none;
 	background: none;
-	color: var(--md-primary);
 }
 
 .app-meta-status svg {
@@ -166,21 +165,6 @@
 	color: var(--md-on-surface-variant);
 }
 
-/* Иконки статуса — без пилюли, только иконка */
-.app-meta-status {
-	padding: 0;
-	border: none;
-	background: none;
-}
-.app-meta-status svg {
-	width: 18px;
-	height: 18px;
-	fill: none;
-	stroke-width: 2;
-	stroke-linecap: round;
-	stroke-linejoin: round;
-}
-
 /*
 .app-status {
 			display: flex;
@@ -198,7 +182,6 @@
 		}
 */
 		.app-developer {
-			color: var(--md-on-surface);
 			font-size: 13px;
 			font-weight: normal;
 			color: var(--md-primary);
@@ -415,6 +398,7 @@
 	<div id="screen-home" class="screen active">
 		<input id="search" placeholder="Поиск (3+ символа)...">
 		<div class="tiles" id="tiles-container"></div>
+		<div id="search-results"></div>
 	</div>
 
 	<div id="screen-section" class="screen">
@@ -441,7 +425,8 @@
 			</select>
 			<label><input type="checkbox" id="filter-phone"> Телефон</label>
 			<label><input type="checkbox" id="filter-tablet"> Планшет</label>
-			<label><input type="checkbox" id="filter-installed"> Установлено</label>
+			<label><input type="checkbox" id="filter-wishlist"> Wishlist</label>
+			<label><input type="checkbox" id="filter-removed"> Удалено</label>
 			<label><input type="checkbox" id="filter-favorite"> Избранное</label>
 		</div>
 		<div id="all-list"></div>
@@ -461,20 +446,25 @@
 			<textarea id="f-summary" placeholder="Резюме"></textarea>
 			<input id="f-link" placeholder="Ссылка (https://...)">
 			<input id="f-help" placeholder="Справка (help/xxx.html)">
-			<select id="f-status">
-				<option value="wishlist">Wishlist</option>
-				<option value="installed">Установлено</option>
-				<option value="removed">Удалено</option>
-			</select>
+
 			<select id="f-type">
 				<option value="app">App</option>
 				<option value="game">Game</option>
 			</select>
+
+			<!-- Статусы -->
 			<div class="form-checkboxes">
-				<label><input type="checkbox" id="f-phone"> Телефон</label>
-				<label><input type="checkbox" id="f-tablet"> Планшет</label>
+				<label><input type="checkbox" id="f-wishlist"> Wishlist</label>
+				<label><input type="checkbox" id="f-removed"> Удалено</label>
 				<label><input type="checkbox" id="f-favorite"> Избранное</label>
 			</div>
+
+			<!-- Устройства -->
+			<div class="form-checkboxes">
+				<label><input type="checkbox" id="f-phone"> Phone</label>
+				<label><input type="checkbox" id="f-tablet"> Tablet</label>
+			</div>
+
 			<button id="f-save">Сохранить</button>
 		</div>
 	</div>
@@ -523,15 +513,15 @@
 			{ nav: 'wishlist', icon: 'wishlist', label: 'Wishlist' },
 			{ nav: 'installed', icon: 'installed', label: 'Установлено' },
 			{ nav: 'removed', icon: 'removed', label: 'Удалено' },
-			{ nav: 'favorite', icon: 'favorite', label: 'Избранное' },
-			{ nav: 'all', icon: 'all', label: 'Все' },
-			{ nav: 'add', icon: 'add', label: 'Добавить' },
 			{ nav: 'docs-app', icon: 'docs', label: 'App Docs' },
 			{ nav: 'docs-github', icon: 'github', label: 'GitHub Docs' },
 			{ nav: 'docs-firebase', icon: 'firebase', label: 'Firebase Docs' },
 			{ nav: 'link-play', icon: 'play', label: 'Google Play' },
 			{ nav: 'link-github', icon: 'github', label: 'GitHub Project' },
-			{ nav: 'link-firebase', icon: 'firebase', label: 'Firebase Console' }
+			{ nav: 'link-firebase', icon: 'firebase', label: 'Firebase Console' },
+			{ nav: 'favorite', icon: 'favorite', label: 'Избранное' },
+			{ nav: 'all', icon: 'all', label: 'Все' },
+			{ nav: 'add', icon: 'add', label: 'Добавить' }
 		];
 
 		const tilesContainer = document.getElementById('tiles-container');
@@ -594,16 +584,27 @@
 
 				renderSection(nav);
 				showScreen('section');
+				document.getElementById('search').value = '';
 			});
 		});
 
 		function renderCard(app) {
-			const statusIcon = ICONS[app.status] || '';
+			// Иконки статусов
+			const wishlistIcon = app.wishlist ? ICONS.wishlist : '';
+			const removedIcon = app.removed ? ICONS.removed : '';
 			const favIcon = app.isFavorite ? ICONS.favorite : '';
 
 			const iconHtml = app.icon
 				? `<img class="app-icon" src="${app.icon}" alt="">`
 				: `<div class="app-icon-placeholder"></div>`;
+
+			// Пилюли устройств (только если есть)
+			let devicesHtml = '';
+			if (app.installedOn?.includes('phone')) devicesHtml += `<div class="app-meta-item pill">Phone</div>`;
+			if (app.installedOn?.includes('tablet')) devicesHtml += `<div class="app-meta-item pill">Tablet</div>`;
+
+			// Размер (просто текст, без пилюли)
+			const spaceHtml = app.space ? `<div class="app-meta-item">${app.space}</div>` : '';
 
 			const div = document.createElement('div');
 			div.className = 'app-card';
@@ -620,11 +621,12 @@
 				${app.summary ? `<div class="app-summary">${app.summary}</div>` : ''}
 
 				<div class="app-meta-row">
-					${app.installedOn?.includes('phone') ? `<div class="app-meta-item pill">Phone</div>` : ''}
-					${app.installedOn?.includes('tablet') ? `<div class="app-meta-item pill">Tablet</div>` : ''}
-					${app.space ? `<div class="app-meta-item">${app.space}</div>` : ''}
-					${statusIcon ? `<div class="app-meta-item app-meta-status">${statusIcon}</div>` : ''}
+					${devicesHtml}
+					${spaceHtml}
+					${wishlistIcon ? `<div class="app-meta-item app-meta-status">${wishlistIcon}</div>` : ''}
 					${favIcon ? `<div class="app-meta-item app-meta-status">${favIcon}</div>` : ''}
+					${removedIcon ? `<div class="app-meta-item app-meta-status">${removedIcon}</div>` : ''}
+
 				</div>
 
 				<div class="app-actions">
@@ -654,15 +656,27 @@
 			apps.forEach(app => container.appendChild(renderCard(app)));
 		}
 
-		function renderSection(status) {
-			const titles = { wishlist: 'Wishlist', installed: 'Установлено', removed: 'Удалено', favorite: 'Избранное' };
-			document.getElementById('section-title').textContent = titles[status] || status;
-			let filtered;
-			if (status === 'favorite') {
+		function renderSection(section) {
+			const titles = {
+				wishlist: 'Wishlist',
+				removed: 'Удалено',
+				installed: 'Установлено',
+				favorite: 'Избранное'
+			};
+			document.getElementById('section-title').textContent = titles[section] || section;
+
+			let filtered = allApps;
+
+			if (section === 'wishlist') {
+				filtered = allApps.filter(a => a.wishlist === true);
+			} else if (section === 'removed') {
+				filtered = allApps.filter(a => a.removed === true);
+			} else if (section === 'installed') {
+				filtered = allApps.filter(a => a.installedOn && a.installedOn.length > 0);
+			} else if (section === 'favorite') {
 				filtered = allApps.filter(a => a.isFavorite === true);
-			} else {
-				filtered = allApps.filter(a => a.status === status);
 			}
+
 			renderInto(document.getElementById('section-list'), filtered);
 		}
 
@@ -671,20 +685,23 @@
 			const type = document.getElementById('filter-type').value;
 			const phone = document.getElementById('filter-phone').checked;
 			const tablet = document.getElementById('filter-tablet').checked;
-			const installed = document.getElementById('filter-installed').checked;
+			const wishlist = document.getElementById('filter-wishlist').checked;
+			const removed = document.getElementById('filter-removed').checked;
 			const favorite = document.getElementById('filter-favorite').checked;
 
 			let filtered = allApps;
 			if (query.length >= 3) {
 				filtered = filtered.filter(a =>
 					a.name.toLowerCase().includes(query) ||
-					(a.summary && a.summary.toLowerCase().includes(query))
+					(a.summary && a.summary.toLowerCase().includes(query)) ||
+					(a.developer && a.developer.toLowerCase().includes(query))
 				);
 			}
 			if (type !== 'all') filtered = filtered.filter(a => a.type === type);
 			if (phone) filtered = filtered.filter(a => a.installedOn?.includes('phone'));
 			if (tablet) filtered = filtered.filter(a => a.installedOn?.includes('tablet'));
-			if (installed) filtered = filtered.filter(a => a.status === 'installed');
+			if (wishlist) filtered = filtered.filter(a => a.wishlist === true);
+			if (removed) filtered = filtered.filter(a => a.removed === true);
 			if (favorite) filtered = filtered.filter(a => a.isFavorite === true);
 
 			renderInto(document.getElementById('all-list'), filtered);
@@ -694,20 +711,37 @@
 		document.getElementById('filter-type').addEventListener('change', renderAll);
 		document.getElementById('filter-phone').addEventListener('change', renderAll);
 		document.getElementById('filter-tablet').addEventListener('change', renderAll);
-		document.getElementById('filter-installed').addEventListener('change', renderAll);
+		document.getElementById('filter-wishlist').addEventListener('change', renderAll);
+		document.getElementById('filter-removed').addEventListener('change', renderAll);
 		document.getElementById('filter-favorite').addEventListener('change', renderAll);
 
 		document.getElementById('search').addEventListener('input', (e) => {
 			const q = e.target.value.toLowerCase().trim();
-			if (q.length < 3) return;
+			const resultsContainer = document.getElementById('search-results');
+			const tilesContainer = document.getElementById('tiles-container');
+
+			// Если меньше 3 символов — показываем плитки, очищаем результаты
+			if (q.length < 3) {
+				tilesContainer.style.display = 'grid';
+				resultsContainer.innerHTML = '';
+				return;
+			}
+
+			// Иначе — скрываем плитки, показываем результаты
+			tilesContainer.style.display = 'none';
+
 			const results = allApps.filter(a =>
 				a.name.toLowerCase().includes(q) ||
-				(a.summary && a.summary.toLowerCase().includes(q))
+				(a.summary && a.summary.toLowerCase().includes(q)) ||
+				(a.developer && a.developer.toLowerCase().includes(q))
 			);
-			renderSection('search');
-			document.getElementById('section-title').textContent = `Результаты: ${results.length}`;
-			renderInto(document.getElementById('section-list'), results);
-			showScreen('section');
+
+			resultsContainer.innerHTML = '';
+			if (results.length === 0) {
+				resultsContainer.innerHTML = '<p style="color:#666;">Ничего не найдено.</p>';
+				return;
+			}
+			results.forEach(app => resultsContainer.appendChild(renderCard(app)));
 		});
 
 		function openForm(id) {
@@ -720,8 +754,9 @@
 				summary: document.getElementById('f-summary'),
 				link: document.getElementById('f-link'),
 				help: document.getElementById('f-help'),
-				status: document.getElementById('f-status'),
 				type: document.getElementById('f-type'),
+				wishlist: document.getElementById('f-wishlist'),
+				removed: document.getElementById('f-removed'),
 				phone: document.getElementById('f-phone'),
 				tablet: document.getElementById('f-tablet'),
 				favorite: document.getElementById('f-favorite')
@@ -736,8 +771,9 @@
 				f.summary.value = app.summary || '';
 				f.link.value = app.link || '';
 				f.help.value = app.helpUrl || '';
-				f.status.value = app.status || 'wishlist';
 				f.type.value = app.type || 'app';
+				f.wishlist.checked = app.wishlist || false;
+				f.removed.checked = app.removed || false;
 				f.phone.checked = app.installedOn?.includes('phone') || false;
 				f.tablet.checked = app.installedOn?.includes('tablet') || false;
 				f.favorite.checked = app.isFavorite || false;
@@ -746,7 +782,8 @@
 				f.name.value = ''; f.developer.value = ''; f.space.value = '';
 				f.icon.value = '';
 				f.summary.value = ''; f.link.value = ''; f.help.value = '';
-				f.status.value = 'wishlist'; f.type.value = 'app';
+				f.type.value = 'app';
+				f.wishlist.checked = false; f.removed.checked = false;
 				f.phone.checked = false; f.tablet.checked = false; f.favorite.checked = false;
 			}
 			showScreen('form');
@@ -766,8 +803,9 @@
 				summary: document.getElementById('f-summary').value.trim(),
 				link: document.getElementById('f-link').value.trim(),
 				helpUrl: document.getElementById('f-help').value.trim(),
-				status: document.getElementById('f-status').value,
 				type: document.getElementById('f-type').value,
+				wishlist: document.getElementById('f-wishlist').checked,
+				removed: document.getElementById('f-removed').checked,
 				installedOn,
 				isFavorite: document.getElementById('f-favorite').checked,
 				updatedAt: Date.now()
