@@ -1,504 +1,757 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Трекер приложений</title>
 	<link rel="manifest" href="manifest.json">
 	<link rel="apple-touch-icon" href="icon-192.png">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Трекер приложений</title>
-  <style>
-    /* === ТЁМНАЯ ТЕМА === */
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: #121212;
-      color: #e0e0e0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      padding: 16px;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-    h1 { font-size: 22px; margin-bottom: 12px; }
-    h2 { font-size: 18px; margin-bottom: 8px; }
+	<style>
+		:root {
+			--md-bg: #121212;
+			--md-surface: #1e1e1e;
+			--md-surface-high: #2a2a2a;
+			--md-on-surface: #e0e0e0;
+			--md-on-surface-variant: #aaa;
+			--md-primary: #4da3ff;
+			--md-radius-lg: 16px;
+			--md-radius-full: 999px;
+			--md-border: #3a3a3a;
+		}
 
-    /* === ПОИСК === */
-    #search {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 12px;
-      background: #1e1e1e;
-      border: 1px solid #333;
-      border-radius: 8px;
-      color: #e0e0e0;
-      font-size: 14px;
-    }
-    #search::placeholder { color: #666; }
+		* { box-sizing: border-box; margin: 0; padding: 0; }
+		body {
+			background: var(--md-bg);
+			color: var(--md-on-surface);
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+			padding: 16px;
+			max-width: 600px;
+			margin: 0 auto;
+		}
+		h1 { font-size: 22px; margin-bottom: 12px; font-weight: 500; }
+		h2 { font-size: 18px; margin-bottom: 8px; font-weight: 500; }
 
-/* === 12 ПЛИТОК (4×3, квадратные) === */
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 16px;
+		#search, #search-all, .filters select {
+			width: 100%;
+			padding: 12px 16px;
+			background: var(--md-surface-high);
+			border: none;
+			border-radius: var(--md-radius-full);
+			color: var(--md-on-surface);
+			font-size: 15px;
+			outline: none;
+			margin-bottom: 12px;
+		}
+		#search:focus, #search-all:focus {
+			box-shadow: 0 0 0 2px var(--md-primary);
+		}
+
+		.tiles {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: 8px;
+			margin-bottom: 16px;
+		}
+		.tile {
+			background: var(--md-surface);
+			border: 1px solid var(--md-border);
+			border-radius: var(--md-radius-lg);
+			padding: 8px 4px;
+			text-align: center;
+			cursor: pointer;
+			font-size: 11px;
+			line-height: 1.3;
+			transition: background 0.15s;
+			aspect-ratio: 1 / 1;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			gap: 6px;
+		}
+		.tile:hover { background: var(--md-surface-high); }
+		.tile svg {
+			width: 24px;
+			height: 24px;
+			fill: none;
+			stroke-width: 2;
+			stroke-linecap: round;
+			stroke-linejoin: round;
+		}
+
+		.screen { display: none; }
+		.screen.active { display: block; }
+
+		.app-card {
+			background: var(--md-surface);
+			border: 1px solid var(--md-border);
+			border-radius: var(--md-radius-lg);
+			padding: 16px;
+			margin-bottom: 12px;
+		}
+		.app-card-header {
+			display: flex;
+			gap: 12px;
+			margin-bottom: 8px;
+		}
+		.app-icon {
+			flex-shrink: 0;
+			width: 48px;
+			height: 48px;
+			border-radius: 8px;
+			object-fit: cover;
+			background: var(--md-surface-high);
+		}
+		.app-icon-placeholder {
+			flex-shrink: 0;
+			width: 48px;
+			height: 48px;
+			border-radius: 8px;
+			background: var(--md-surface-high);
+		}
+		.app-info {
+			flex: 1;
+			min-width: 0; /* ← вот это заставляет текст переноситься, а не вылезать */
+		}
+		.app-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-start;
+			margin-bottom: 2px;
+		}
+		.app-name {
+			font-size: 15px;
+			font-weight: 600;
+
+			letter-spacing: 0.5px;
+			word-wrap: break-word; /* ← длинные названия ломаются */
+		}
+		.app-status {
+			display: flex;
+			align-items: center;
+			gap: 4px;
+			flex-shrink: 0;
+		}
+		.app-status svg {
+			width: 18px;
+			height: 18px;
+			fill: none;
+			stroke-width: 2;
+			stroke-linecap: round;
+			stroke-linejoin: round;
+		}
+		.app-developer {
+			color: var(--md-on-surface);
+			font-size: 13px;
+			font-weight: normal;
+			color: var(--md-primary);
+			margin-bottom: 2px;
+			word-wrap: break-word; /* ← длинные разработчики ломаются */
+		}
+		.app-summary {
+			font-size: 14px;
+			color: var(--md-on-surface-variant);
+			margin-bottom: 8px;
+			word-wrap: break-word;
+		}
+		.app-help { margin-bottom: 0; }
+		.app-help a {
+			display: inline-flex;
+			align-items: center;
+			padding: 6px 14px;
+			background: transparent;
+			border: 1px solid var(--md-primary); /* ← голубая рамка */
+			color: var(--md-primary);
+			text-decoration: none;
+			border-radius: var(--md-radius-full);
+			font-size: 13px;
+			font-weight: 500;
+		}
+
+/* === МЕТА-СТРОКА (ПИЛЮЛИ) === */
+.app-meta-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 8px 0;
+	padding: 8px 0;
 }
 
-.tile {
-  background: #1e1e1e;
-  border: 1px solid #333;
-  border-radius: 8px;
-  padding: 8px 4px;
-  text-align: center;
-  cursor: pointer;
-  font-size: 12px;
-  line-height: 1.3;
-  transition: background 0.15s;
-  aspect-ratio: 1 / 1;        /* ← КВАДРАТ */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+.app-meta-item {
+	display: inline-flex;
+	align-items: center;
+	padding: 6px 14px;
+	border: 1px solid #4caf50;          /* зелёная рамка */
+	border-radius: var(--md-radius-full); /* пилюля */
+	color: #81c784;                     /* зелёный текст */
+	background: rgba(76, 175, 80, 0.08); /* чуть зелёный фон */
+	font-size: 12px;
+	font-weight: 500;
 }
 
-.tile:hover { background: #2a2a2a; }
+		.app-actions {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			gap: 8px;
+		}
+		.app-actions-left {
+			display: flex;
+			gap: 8px;
+			flex-wrap: wrap;
+		}
+		.app-actions a, .app-actions button {
+			display: inline-flex;
+			align-items: center;
+			padding: 8px 16px;
+			background: var(--md-primary);
+			color: #000;
+			border: none;
+			border-radius: var(--md-radius-full);
+			text-decoration: none;
+			font-size: 13px;
+			font-weight: 600;
+			cursor: pointer;
+		}
+		.app-actions a.app-help-btn {
+			background: transparent;
+			border: 1px solid var(--md-primary);
+			color: var(--md-primary);
+		}
+		.app-actions button {
+			background: transparent;
+			border: 1px solid var(--md-primary);
+			color: var(--md-primary);
+			padding: 6px;
+		}
+		.app-actions button svg {
+			width: 18px;
+			height: 18px;
+			fill: none;
+			stroke-width: 2;
+			stroke-linecap: round;
+			stroke-linejoin: round;
+		}
 
-.tile .icon {
-  font-size: 24px;
-  display: block;
-  margin-bottom: 6px;
+		#form input, #form textarea, #form select {
+			width: 100%;
+			padding: 12px 16px;
+			margin-bottom: 10px;
+			background: var(--md-surface-high);
+			border: none;
+			border-radius: var(--md-radius-full);
+			color: var(--md-on-surface);
+			font-size: 15px;
+			outline: none;
+		}
+		#form select {
+			appearance: none;
+			-webkit-appearance: none;
+			background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+			background-repeat: no-repeat;
+			background-position: right 20px center;
+			background-size: 16px;
+			padding-right: 48px;
+		}
+		#form textarea {
+			border-radius: var(--md-radius-lg);
+			min-height: 60px;
+			resize: vertical;
+		}
+		#form input:focus, #form textarea:focus, #form select:focus {
+			box-shadow: 0 0 0 2px var(--md-primary);
+		}
+		#form label {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			margin-right: 12px;
+			font-size: 14px;
+			margin-bottom: 8px;
+		}
+		#form input[type="checkbox"] {
+			width: 18px;
+			height: 18px;
+			accent-color: var(--md-primary);
+		}
+#form button {
+	display: block;
+	margin-left: auto;      /* ← прижимает вправо */
+	padding: 12px 24px;
+	background: var(--md-primary);
+	color: #000;
+	border: none;
+	border-radius: var(--md-radius-full);
+	font-size: 15px;
+	font-weight: 600;
+	cursor: pointer;
+	margin-top: 8px;
 }
 
-    /* === ЭКРАНЫ === */
-    .screen { display: none; }
-    .screen.active { display: block; }
+		.filters { margin-bottom: 12px; }
+		.filters select {
+			width: auto;
+			display: inline-block;
+			margin-right: 8px;
+			appearance: none;
+			-webkit-appearance: none;
+			background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+			background-repeat: no-repeat;
+			background-position: right 16px center;
+			background-size: 16px;
+			padding-right: 44px;
+		}
+		.filters label {
+			display: inline-flex;
+			align-items: center;
+			gap: 4px;
+			font-size: 13px;
+			margin-right: 10px;
+			margin-bottom: 6px;
+		}
+		.filters input[type="checkbox"] { accent-color: var(--md-primary); }
 
-    /* === КАРТОЧКИ === */
-    .app-card {
-      background: #1e1e1e;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 12px;
-    }
-    .app-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 4px;
-    }
-    .app-name { font-size: 17px; font-weight: bold; }
-    .app-status { font-size: 18px; }
-    .app-summary { font-size: 14px; color: #aaa; margin-bottom: 6px; word-wrap: break-word; }
-    .app-devices { font-size: 14px; margin-bottom: 6px; }
-    .app-help { margin-bottom: 6px; }
-    .app-help a { color: #4da3ff; text-decoration: none; font-size: 14px; }
-    .app-divider { border-top: 1px solid #333; margin: 8px 0; }
-    .app-actions {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .app-actions a { color: #4da3ff; text-decoration: none; font-size: 14px; }
-    .app-actions button {
-      background: none;
-      border: none;
-      font-size: 18px;
-      cursor: pointer;
-      padding: 4px;
-    }
+		.back-btn {
+			display: inline-flex;
+			align-items: center;
+			gap: 4px;
+			padding: 8px 16px;
+			background: var(--md-surface-high);
+			color: var(--md-primary);
+			border: 1px solid var(--md-primary);
+			border-radius: var(--md-radius-full);
+			font-size: 14px;
+			font-weight: 500;
+			cursor: pointer;
+			margin-bottom: 12px;
+		}
+		.back-btn svg {
+			width: 16px;
+			height: 16px;
+			fill: none;
+			stroke-width: 2;
+			stroke-linecap: round;
+			stroke-linejoin: round;
+		}
 
-    /* === ФОРМА === */
-    #form input, #form textarea, #form select {
-      width: 100%;
-      padding: 8px;
-      margin-bottom: 8px;
-      background: #1e1e1e;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #e0e0e0;
-      font-size: 14px;
-    }
-    #form textarea { min-height: 60px; resize: vertical; }
-    #form label { display: inline-block; margin-right: 12px; font-size: 14px; }
-    #form button {
-      padding: 10px 20px;
-      background: #4da3ff;
-      color: #000;
-      border: none;
-      border-radius: 6px;
-      font-size: 15px;
-      font-weight: bold;
-      cursor: pointer;
-      margin-top: 8px;
-    }
+		/* === ЦЕНТРИРОВАНИЕ ЧЕКБОКСОВ В ФОРМЕ === */
+/* === ЦЕНТРИРОВАНИЕ ЧЕКБОКСОВ В ФОРМЕ === */
+#form .form-checkboxes {
+	display: flex;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-bottom: 8px;
+}
+#form .form-checkboxes label {
+	margin-right: 0;
+	margin-bottom: 0;
+}
 
-    /* === ФИЛЬТРЫ === */
-    .filters { margin-bottom: 12px; }
-    .filters select, .filters label {
-      font-size: 14px;
-      margin-right: 8px;
-      margin-bottom: 6px;
-      display: inline-block;
-    }
-    .filters select {
-      padding: 6px;
-      background: #1e1e1e;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #e0e0e0;
-    }
-
-    /* === КНОПКА НАЗАД === */
-    .back-btn {
-      background: none;
-      border: none;
-      color: #4da3ff;
-      font-size: 15px;
-      cursor: pointer;
-      padding: 4px 0;
-      margin-bottom: 12px;
-    }
-  </style>
+		/* === ЦЕНТРИРОВАНИЕ ЧЕКБОКСОВ В ФИЛЬТРАХ === */
+		.filters {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: center;
+			align-items: center;
+			gap: 8px;
+		}
+		.filters select {
+			margin-right: 0;
+		}
+	</style>
 </head>
 <body>
 
-  <h1>📱 Трекер приложений</h1>
+	<h1>Трекер приложений</h1>
 
-  <!-- ===== ГЛАВНЫЙ ЭКРАН ===== -->
-  <div id="screen-home" class="screen active">
-    <input id="search" placeholder="🔍 Поиск (3+ символа)...">
+	<div id="screen-home" class="screen active">
+		<input id="search" placeholder="Поиск (3+ символа)...">
+		<div class="tiles" id="tiles-container"></div>
+	</div>
 
-<div class="tiles">
-  <!-- Ряд 1: статусы -->
-  <div class="tile" data-nav="wishlist"><span class="icon">⭐</span>Wishlist</div>
-  <div class="tile" data-nav="installed"><span class="icon">✅</span>Установлено</div>
-  <div class="tile" data-nav="removed"><span class="icon">🗑️</span>Удалено</div>
+	<div id="screen-section" class="screen">
+		<button class="back-btn" data-nav="home">
+			<svg viewBox="0 0 24 24" stroke="#4da3ff"><path d="M15 18l-6-6 6-6"/></svg>
+			Назад
+		</button>
+		<h2 id="section-title"></h2>
+		<div id="section-list"></div>
+	</div>
 
-  <!-- Ряд 2: документация -->
-  <div class="tile" data-nav="docs-app"><span class="icon">📚</span>App Docs</div>
-  <div class="tile" data-nav="docs-github"><span class="icon">🐙</span>GitHub Docs</div>
-  <div class="tile" data-nav="docs-firebase"><span class="icon">🔥</span>Firebase Docs</div>
+	<div id="screen-all" class="screen">
+		<button class="back-btn" data-nav="home">
+			<svg viewBox="0 0 24 24" stroke="#4da3ff"><path d="M15 18l-6-6 6-6"/></svg>
+			Назад
+		</button>
+		<h2>Все приложения</h2>
+		<input id="search-all" placeholder="Поиск...">
+		<div class="filters">
+			<select id="filter-type">
+				<option value="all">Все типы</option>
+				<option value="app">App</option>
+				<option value="game">Game</option>
+			</select>
+			<label><input type="checkbox" id="filter-phone"> Телефон</label>
+			<label><input type="checkbox" id="filter-tablet"> Планшет</label>
+			<label><input type="checkbox" id="filter-installed"> Установлено</label>
+			<label><input type="checkbox" id="filter-favorite"> Избранное</label>
+		</div>
+		<div id="all-list"></div>
+	</div>
 
-  <!-- Ряд 3: внешние ссылки -->
-  <div class="tile" data-nav="link-play"><span class="icon">🛒</span>Google Play</div>
-  <div class="tile" data-nav="link-github"><span class="icon">🐙</span>GitHub Project</div>
-  <div class="tile" data-nav="link-firebase"><span class="icon">🔥</span>Firebase Console</div>
+	<div id="screen-form" class="screen">
+		<button class="back-btn" data-nav="home">
+			<svg viewBox="0 0 24 24" stroke="#4da3ff"><path d="M15 18l-6-6 6-6"/></svg>
+			Назад
+		</button>
+		<h2 id="form-title">Добавить приложение</h2>
+		<div id="form">
+			<input id="f-name" placeholder="Название *" required>
+			<input id="f-developer" placeholder="Разработчик">
+			<input id="f-space" placeholder="Размер / место">
+			<input id="f-icon" placeholder="Иконка (app-ico/xxx.png)">
+			<textarea id="f-summary" placeholder="Резюме"></textarea>
+			<input id="f-link" placeholder="Ссылка (https://...)">
+			<input id="f-help" placeholder="Справка (help/xxx.html)">
+			<select id="f-status">
+				<option value="wishlist">Wishlist</option>
+				<option value="installed">Установлено</option>
+				<option value="removed">Удалено</option>
+			</select>
+			<select id="f-type">
+				<option value="app">App</option>
+				<option value="game">Game</option>
+			</select>
+			<div class="form-checkboxes">
+				<label><input type="checkbox" id="f-phone"> Телефон</label>
+				<label><input type="checkbox" id="f-tablet"> Планшет</label>
+				<label><input type="checkbox" id="f-favorite"> Избранное</label>
+			</div>
+			<button id="f-save">Сохранить</button>
+		</div>
+	</div>
 
-  <!-- Ряд 4: действия -->
-  <div class="tile" data-nav="favorite"><span class="icon">❤️</span>Избранное</div>
-  <div class="tile" data-nav="all"><span class="icon">📋</span>Все</div>
-  <div class="tile" data-nav="add"><span class="icon">➕</span>Добавить</div>
+	<script type="module">
+		import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+		import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+		import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-</div>
-  </div>
-
-  <!-- ===== ЭКРАН РАЗДЕЛА ===== -->
-  <div id="screen-section" class="screen">
-    <button class="back-btn" data-nav="home">← Назад</button>
-    <h2 id="section-title"></h2>
-    <div id="section-list"></div>
-  </div>
-
-  <!-- ===== ЭКРАН «ВСЕ» С ФИЛЬТРАМИ ===== -->
-  <div id="screen-all" class="screen">
-    <button class="back-btn" data-nav="home">← Назад</button>
-    <h2>📋 Все приложения</h2>
-    <input id="search-all" placeholder="🔍 Поиск...">
-    <div class="filters">
-      <select id="filter-type">
-        <option value="all">Все типы</option>
-        <option value="app">App</option>
-        <option value="game">Game</option>
-      </select>
-      <label><input type="checkbox" id="filter-phone"> 📱 Телефон</label>
-      <label><input type="checkbox" id="filter-tablet"> 📟 Планшет</label>
-      <label><input type="checkbox" id="filter-installed"> ✅ Установлено</label>
-      <label><input type="checkbox" id="filter-favorite"> ❤️ Избранное</label>
-    </div>
-    <div id="all-list"></div>
-  </div>
-
-  <!-- ===== ЭКРАН ФОРМЫ ===== -->
-  <div id="screen-form" class="screen">
-    <button class="back-btn" data-nav="home">← Назад</button>
-    <h2 id="form-title">Добавить приложение</h2>
-    <div id="form">
-      <input id="f-name" placeholder="Название *" required>
-      <textarea id="f-summary" placeholder="Резюме"></textarea>
-      <input id="f-link" placeholder="Ссылка (https://...)">
-      <input id="f-help" placeholder="Справка (help/xxx.html)">
-      <select id="f-status">
-        <option value="wishlist">⭐ Wishlist</option>
-        <option value="installed">✅ Установлено</option>
-        <option value="removed">🗑️ Удалено</option>
-      </select>
-      <select id="f-type">
-        <option value="app">App</option>
-        <option value="game">Game</option>
-      </select>
-      <div>
-        <label><input type="checkbox" id="f-phone"> Телефон</label>
-        <label><input type="checkbox" id="f-tablet"> Планшет</label>
-        <label><input type="checkbox" id="f-favorite"> ❤️ Избранное</label>
-      </div>
-      <button id="f-save">Сохранить</button>
-    </div>
-  </div>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
-    // ===== ТВОЙ КОНФИГ =====
 		const firebaseConfig = {
-		  apiKey: "AIzaSyCIuhIQNjl9eHnCG-72X-33j8TvtjcBlTM",
-		  authDomain: "app-tracker-407bc.firebaseapp.com",
-		  databaseURL: "https://app-tracker-407bc-default-rtdb.europe-west1.firebasedatabase.app",
-		  projectId: "app-tracker-407bc",
-		  storageBucket: "app-tracker-407bc.firebasestorage.app",
-		  messagingSenderId: "367278582896",
-		  appId: "1:367278582896:web:578c057df36be70ee1d8b5"
+			apiKey: "AIzaSyCIuhIQNjl9eHnCG-72X-33j8TvtjcBlTM",
+			authDomain: "app-tracker-407bc.firebaseapp.com",
+			databaseURL: "https://app-tracker-407bc-default-rtdb.europe-west1.firebasedatabase.app",
+			projectId: "app-tracker-407bc",
+			storageBucket: "app-tracker-407bc.firebasestorage.app",
+			messagingSenderId: "367278582896",
+			appId: "1:367278582896:web:578c057df36be70ee1d8b5"
 		};
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
+		const app = initializeApp(firebaseConfig);
+		const auth = getAuth(app);
+		const db = getDatabase(app);
 
-    let allApps = [];
-    let currentEditId = null;
+		let allApps = [];
+		let currentEditId = null;
 
-    // ===== НАВИГАЦИЯ =====
-    const screens = {
-      home: document.getElementById('screen-home'),
-      section: document.getElementById('screen-section'),
-      all: document.getElementById('screen-all'),
-      form: document.getElementById('screen-form')
-    };
+		const ICONS = {
+			wishlist: `<svg viewBox="0 0 24 24" stroke="#FF9900"><path d="M12 2l3 7h7l-5.5 4.5 2 7.5-6.5-4.5-6.5 4.5 2-7.5-5.5-4.5h7z"/></svg>`,
+			installed: `<svg viewBox="0 0 24 24" stroke="#4da3ff"><path d="M20 6L9 17l-5-5"/></svg>`,
+			removed: `<svg viewBox="0 0 24 24" stroke="#4da3ff"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>`,
+			favorite: `<svg viewBox="0 0 24 24" stroke="#4da3ff"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>`,
+			all: `<svg viewBox="0 0 24 24" stroke="#4da3ff"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>`,
+			add: `<svg viewBox="0 0 24 24" stroke="#4da3ff"><path d="M12 5v14M5 12h14"/></svg>`,
+			docs: `<svg viewBox="0 0 24 24" stroke="#4da3ff"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>`,
+			github: `<svg viewBox="0 0 24 24" stroke="#4da3ff"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>`,
+			firebase: `<svg viewBox="0 0 24 24" stroke="#4da3ff"><path d="M4 20l4-16 4 8 4-6 4 14H4z"/></svg>`,
+			play: `<svg viewBox="0 0 24 24" stroke="#4da3ff"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
+			phone: `<svg viewBox="0 0 24 24" stroke="#4da3ff"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>`,
+			tablet: `<svg viewBox="0 0 24 24" stroke="#4da3ff"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>`,
+			space: `<svg viewBox="0 0 24 24" stroke="#4da3ff"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="8" x2="22" y2="8"/></svg>`,
+			edit: `<svg viewBox="0 0 24 24" stroke="#4da3ff"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>`,
+			delete: `<svg viewBox="0 0 24 24" stroke="#4da3ff"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>`
+		};
 
-    function showScreen(name) {
-      Object.values(screens).forEach(s => s.classList.remove('active'));
-      screens[name].classList.add('active');
-      window.scrollTo(0, 0);
-    }
+		const TILES = [
+			{ nav: 'wishlist', icon: 'wishlist', label: 'Wishlist' },
+			{ nav: 'installed', icon: 'installed', label: 'Установлено' },
+			{ nav: 'removed', icon: 'removed', label: 'Удалено' },
+			{ nav: 'favorite', icon: 'favorite', label: 'Избранное' },
+			{ nav: 'all', icon: 'all', label: 'Все' },
+			{ nav: 'add', icon: 'add', label: 'Добавить' },
+			{ nav: 'docs-app', icon: 'docs', label: 'App Docs' },
+			{ nav: 'docs-github', icon: 'github', label: 'GitHub Docs' },
+			{ nav: 'docs-firebase', icon: 'firebase', label: 'Firebase Docs' },
+			{ nav: 'link-play', icon: 'play', label: 'Google Play' },
+			{ nav: 'link-github', icon: 'github', label: 'GitHub Project' },
+			{ nav: 'link-firebase', icon: 'firebase', label: 'Firebase Console' }
+		];
 
-document.querySelectorAll('[data-nav]').forEach(el => {
-  el.addEventListener('click', (e) => {
-    const nav = el.dataset.nav;
-    if (nav === 'home') { showScreen('home'); return; }
-    if (nav === 'add') { openForm(null); return; }
-    if (nav === 'all') { renderAll(); showScreen('all'); return; }
+		const tilesContainer = document.getElementById('tiles-container');
+		TILES.forEach(t => {
+			const div = document.createElement('div');
+			div.className = 'tile';
+			div.dataset.nav = t.nav;
 
-    // === ВНЕШНИЕ ССЫЛКИ ===
-    if (nav === 'link-play') {
-      window.open('https://play.google.com/apps?hl=ru', '_blank');
-      return;
-    }
-    if (nav === 'link-github') {
-      window.open('https://github.com/core-samurai/app-tracker', '_blank');
-      return;
-    }
-    if (nav === 'link-firebase') {
-      window.open('https://console.firebase.google.com/u/0/project/app-tracker-407bc/database/app-tracker-407bc-default-rtdb/data', '_blank');
-      return;
-    }
+			let iconHtml;
+			if (t.icon.includes('.png') || t.icon.includes('/')) {
+				// PNG
+				iconHtml = `<img src="${t.icon}" alt="" style="width: 24px; height: 24px; object-fit: contain;">`;
+			} else {
+				// SVG из ICONS
+				iconHtml = ICONS[t.icon];
+			}
 
-    // === ДОКУМЕНТАЦИЯ ===
-    if (nav.startsWith('docs-')) {
-      const map = { 'docs-app': 'help/index.html', 'docs-github': 'help/github.html', 'docs-firebase': 'help/firebase.html' };
-      window.location.href = map[nav];
-      return;
-    }
-
-    // разделы
-    renderSection(nav);
-    showScreen('section');
-  });
-});
-
-    // ===== РЕНДЕР КАРТОЧКИ =====
-    function renderCard(app) {
-      const statusIcon = { wishlist: '⭐', installed: '✅', removed: '🗑️' }[app.status] || '';
-      const favIcon = app.isFavorite ? ' ❤️' : '';
-      let devices = '';
-      if (app.installedOn?.includes('phone')) devices += '📱 ';
-      if (app.installedOn?.includes('tablet')) devices += '📟 ';
-
-      const div = document.createElement('div');
-      div.className = 'app-card';
-      div.innerHTML = `
-        <div class="app-header">
-          <div class="app-name">${app.name}</div>
-          <div class="app-status">${statusIcon}${favIcon}</div>
-        </div>
-        ${app.summary ? `<div class="app-summary">${app.summary}</div>` : ''}
-        ${app.helpUrl ? `<div class="app-help"><a href="${app.helpUrl}">Подробнее →</a></div>` : ''}
-        ${devices ? `<div class="app-devices">${devices}</div>` : ''}
-        <div class="app-divider"></div>
-        <div class="app-actions">
-          <div>${app.link ? `<a href="${app.link}" target="_blank">Открыть</a>` : ''}</div>
-          <div>
-            <button data-edit="${app.id}">✏️</button>
-            <button data-del="${app.id}">🗑️</button>
-          </div>
-        </div>
-      `;
-      div.querySelector('[data-edit]')?.addEventListener('click', () => openForm(app.id));
-      div.querySelector('[data-del]')?.addEventListener('click', () => {
-        if (confirm('Удалить приложение?')) remove(ref(db, 'apps/' + app.id));
-      });
-      return div;
-    }
-
-    function renderInto(container, apps) {
-      container.innerHTML = '';
-      if (apps.length === 0) {
-        container.innerHTML = '<p style="color:#666;">Пусто.</p>';
-        return;
-      }
-      apps.forEach(app => container.appendChild(renderCard(app)));
-    }
-
-    // ===== РАЗДЕЛЫ =====
-    function renderSection(status) {
-      const titles = { wishlist: '⭐ Wishlist', installed: '✅ Установлено', removed: '🗑️ Удалено', favorite: '❤️ Избранное' };
-      document.getElementById('section-title').textContent = titles[status] || status;
-      let filtered;
-      if (status === 'favorite') {
-        filtered = allApps.filter(a => a.isFavorite === true);
-      } else {
-        filtered = allApps.filter(a => a.status === status);
-      }
-      renderInto(document.getElementById('section-list'), filtered);
-    }
-
-    // ===== ВСЕ С ФИЛЬТРАМИ =====
-    function renderAll() {
-      const query = document.getElementById('search-all').value.toLowerCase().trim();
-      const type = document.getElementById('filter-type').value;
-      const phone = document.getElementById('filter-phone').checked;
-      const tablet = document.getElementById('filter-tablet').checked;
-      const installed = document.getElementById('filter-installed').checked;
-      const favorite = document.getElementById('filter-favorite').checked;
-
-      let filtered = allApps;
-      if (query.length >= 3) {
-        filtered = filtered.filter(a =>
-          a.name.toLowerCase().includes(query) ||
-          (a.summary && a.summary.toLowerCase().includes(query))
-        );
-      }
-      if (type !== 'all') filtered = filtered.filter(a => a.type === type);
-      if (phone) filtered = filtered.filter(a => a.installedOn?.includes('phone'));
-      if (tablet) filtered = filtered.filter(a => a.installedOn?.includes('tablet'));
-      if (installed) filtered = filtered.filter(a => a.status === 'installed');
-      if (favorite) filtered = filtered.filter(a => a.isFavorite === true);
-
-      renderInto(document.getElementById('all-list'), filtered);
-    }
-
-    document.getElementById('search-all').addEventListener('input', renderAll);
-    document.getElementById('filter-type').addEventListener('change', renderAll);
-    document.getElementById('filter-phone').addEventListener('change', renderAll);
-    document.getElementById('filter-tablet').addEventListener('change', renderAll);
-    document.getElementById('filter-installed').addEventListener('change', renderAll);
-    document.getElementById('filter-favorite').addEventListener('change', renderAll);
-
-    // ===== ПОИСК НА ГЛАВНОЙ =====
-    document.getElementById('search').addEventListener('input', (e) => {
-      const q = e.target.value.toLowerCase().trim();
-      if (q.length < 3) return;
-      const results = allApps.filter(a =>
-        a.name.toLowerCase().includes(q) ||
-        (a.summary && a.summary.toLowerCase().includes(q))
-      );
-      renderSection('search');
-      document.getElementById('section-title').textContent = `🔍 Результаты: ${results.length}`;
-      renderInto(document.getElementById('section-list'), results);
-      showScreen('section');
-    });
-
-    // ===== ФОРМА =====
-    function openForm(id) {
-      currentEditId = id;
-      const f = {
-        name: document.getElementById('f-name'),
-        summary: document.getElementById('f-summary'),
-        link: document.getElementById('f-link'),
-        help: document.getElementById('f-help'),
-        status: document.getElementById('f-status'),
-        type: document.getElementById('f-type'),
-        phone: document.getElementById('f-phone'),
-        tablet: document.getElementById('f-tablet'),
-        favorite: document.getElementById('f-favorite')
-      };
-      if (id) {
-        const app = allApps.find(a => a.id === id);
-        document.getElementById('form-title').textContent = 'Редактировать';
-        f.name.value = app.name || '';
-        f.summary.value = app.summary || '';
-        f.link.value = app.link || '';
-        f.help.value = app.helpUrl || '';
-        f.status.value = app.status || 'wishlist';
-        f.type.value = app.type || 'app';
-        f.phone.checked = app.installedOn?.includes('phone') || false;
-        f.tablet.checked = app.installedOn?.includes('tablet') || false;
-        f.favorite.checked = app.isFavorite || false;
-      } else {
-        document.getElementById('form-title').textContent = 'Добавить приложение';
-        f.name.value = ''; f.summary.value = ''; f.link.value = ''; f.help.value = '';
-        f.status.value = 'wishlist'; f.type.value = 'app';
-        f.phone.checked = false; f.tablet.checked = false; f.favorite.checked = false;
-      }
-      showScreen('form');
-    }
-
-    document.getElementById('f-save').addEventListener('click', () => {
-      const name = document.getElementById('f-name').value.trim();
-      if (!name) { alert('Введите название'); return; }
-      const installedOn = [];
-      if (document.getElementById('f-phone').checked) installedOn.push('phone');
-      if (document.getElementById('f-tablet').checked) installedOn.push('tablet');
-      const data = {
-        name,
-        summary: document.getElementById('f-summary').value.trim(),
-        link: document.getElementById('f-link').value.trim(),
-        helpUrl: document.getElementById('f-help').value.trim(),
-        status: document.getElementById('f-status').value,
-        type: document.getElementById('f-type').value,
-        installedOn,
-        isFavorite: document.getElementById('f-favorite').checked,
-        updatedAt: Date.now()
-      };
-      if (currentEditId) {
-        update(ref(db, 'apps/' + currentEditId), data);
-      } else {
-        data.createdAt = Date.now();
-        push(ref(db, 'apps'), data);
-      }
-      showScreen('home');
-    });
-
-		// ===== FIREBASE =====
-		signInAnonymously(auth).then(() => {
-		  onValue(ref(db, 'apps'), (snapshot) => {
-		    const data = snapshot.val();
-		    allApps = [];
-		    if (data) {
-		      Object.entries(data).forEach(([key, value]) => {
-		        allApps.push({ id: key, ...value });
-		      });
-		    }
-
-		    // Обновить текущий экран, если он открыт
-		    if (screens.section.classList.contains('active')) {
-		      const title = document.getElementById('section-title').textContent;
-		      if (title.includes('Wishlist')) renderSection('wishlist');
-		      else if (title.includes('Установлено')) renderSection('installed');
-		      else if (title.includes('Удалено')) renderSection('removed');
-		      else if (title.includes('Избранное')) renderSection('favorite');
-		    }
-		    if (screens.all.classList.contains('active')) renderAll();
-		  });
+			div.innerHTML = `${iconHtml}<span>${t.label}</span>`;
+			tilesContainer.appendChild(div);
 		});
-  </script>
+
+		const screens = {
+			home: document.getElementById('screen-home'),
+			section: document.getElementById('screen-section'),
+			all: document.getElementById('screen-all'),
+			form: document.getElementById('screen-form')
+		};
+
+		function showScreen(name) {
+			Object.values(screens).forEach(s => s.classList.remove('active'));
+			screens[name].classList.add('active');
+			window.scrollTo(0, 0);
+		}
+
+		document.querySelectorAll('[data-nav]').forEach(el => {
+			el.addEventListener('click', (e) => {
+				const nav = el.dataset.nav;
+				if (nav === 'home') { showScreen('home'); return; }
+				if (nav === 'add') { openForm(null); return; }
+				if (nav === 'all') { renderAll(); showScreen('all'); return; }
+
+				if (nav === 'link-play') {
+					window.open('https://play.google.com/library', '_blank');
+					return;
+				}
+				if (nav === 'link-github') {
+					window.open('https://github.com/core-samurai/app-tracker', '_blank');
+					return;
+				}
+				if (nav === 'link-firebase') {
+					window.open('https://console.firebase.google.com/u/0/project/app-tracker-407bc/database/app-tracker-407bc-default-rtdb/data', '_blank');
+					return;
+				}
+
+				if (nav.startsWith('docs-')) {
+					const map = { 'docs-app': 'help/index.html', 'docs-github': 'help/github.html', 'docs-firebase': 'help/firebase.html' };
+					window.location.href = map[nav];
+					return;
+				}
+
+				renderSection(nav);
+				showScreen('section');
+			});
+		});
+
+		function renderCard(app) {
+			const statusIcon = ICONS[app.status] || '';
+			const favIcon = app.isFavorite ? ICONS.favorite : '';
+
+			const iconHtml = app.icon
+				? `<img class="app-icon" src="${app.icon}" alt="">`
+				: `<div class="app-icon-placeholder"></div>`;
+
+			const div = document.createElement('div');
+			div.className = 'app-card';
+			div.innerHTML = `
+				<div class="app-card-header">
+					${iconHtml}
+					<div class="app-info">
+						<div class="app-header">
+							<div class="app-name">${app.name}</div>
+							<div class="app-status">${statusIcon}${favIcon}</div>
+						</div>
+						${app.developer ? `<div class="app-developer">${app.developer}</div>` : ''}
+					</div>
+				</div>
+				${app.summary ? `<div class="app-summary">${app.summary}</div>` : ''}
+
+				<div class="app-meta-row">
+					${app.installedOn?.includes('phone') ? `<div class="app-meta-item">Phone</div>` : ''}
+					${app.installedOn?.includes('tablet') ? `<div class="app-meta-item">Tablet</div>` : ''}
+					${app.space ? `<div class="app-meta-item">${app.space}</div>` : ''}
+				</div>
+
+				<div class="app-actions">
+					<div class="app-actions-left">
+						${app.helpUrl ? `<a href="${app.helpUrl}" class="app-help-btn">Подробнее</a>` : ''}
+						${app.link ? `<a href="${app.link}" target="_blank">Открыть</a>` : ''}
+					</div>
+					<div>
+						<button data-edit="${app.id}">${ICONS.edit}</button>
+						<button data-del="${app.id}">${ICONS.delete}</button>
+					</div>
+				</div>
+			`;
+			div.querySelector('[data-edit]')?.addEventListener('click', () => openForm(app.id));
+			div.querySelector('[data-del]')?.addEventListener('click', () => {
+				if (confirm('Удалить приложение?')) remove(ref(db, 'apps/' + app.id));
+			});
+			return div;
+		}
+
+		function renderInto(container, apps) {
+			container.innerHTML = '';
+			if (apps.length === 0) {
+				container.innerHTML = '<p style="color:#666;">Пусто.</p>';
+				return;
+			}
+			apps.forEach(app => container.appendChild(renderCard(app)));
+		}
+
+		function renderSection(status) {
+			const titles = { wishlist: 'Wishlist', installed: 'Установлено', removed: 'Удалено', favorite: 'Избранное' };
+			document.getElementById('section-title').textContent = titles[status] || status;
+			let filtered;
+			if (status === 'favorite') {
+				filtered = allApps.filter(a => a.isFavorite === true);
+			} else {
+				filtered = allApps.filter(a => a.status === status);
+			}
+			renderInto(document.getElementById('section-list'), filtered);
+		}
+
+		function renderAll() {
+			const query = document.getElementById('search-all').value.toLowerCase().trim();
+			const type = document.getElementById('filter-type').value;
+			const phone = document.getElementById('filter-phone').checked;
+			const tablet = document.getElementById('filter-tablet').checked;
+			const installed = document.getElementById('filter-installed').checked;
+			const favorite = document.getElementById('filter-favorite').checked;
+
+			let filtered = allApps;
+			if (query.length >= 3) {
+				filtered = filtered.filter(a =>
+					a.name.toLowerCase().includes(query) ||
+					(a.summary && a.summary.toLowerCase().includes(query))
+				);
+			}
+			if (type !== 'all') filtered = filtered.filter(a => a.type === type);
+			if (phone) filtered = filtered.filter(a => a.installedOn?.includes('phone'));
+			if (tablet) filtered = filtered.filter(a => a.installedOn?.includes('tablet'));
+			if (installed) filtered = filtered.filter(a => a.status === 'installed');
+			if (favorite) filtered = filtered.filter(a => a.isFavorite === true);
+
+			renderInto(document.getElementById('all-list'), filtered);
+		}
+
+		document.getElementById('search-all').addEventListener('input', renderAll);
+		document.getElementById('filter-type').addEventListener('change', renderAll);
+		document.getElementById('filter-phone').addEventListener('change', renderAll);
+		document.getElementById('filter-tablet').addEventListener('change', renderAll);
+		document.getElementById('filter-installed').addEventListener('change', renderAll);
+		document.getElementById('filter-favorite').addEventListener('change', renderAll);
+
+		document.getElementById('search').addEventListener('input', (e) => {
+			const q = e.target.value.toLowerCase().trim();
+			if (q.length < 3) return;
+			const results = allApps.filter(a =>
+				a.name.toLowerCase().includes(q) ||
+				(a.summary && a.summary.toLowerCase().includes(q))
+			);
+			renderSection('search');
+			document.getElementById('section-title').textContent = `Результаты: ${results.length}`;
+			renderInto(document.getElementById('section-list'), results);
+			showScreen('section');
+		});
+
+		function openForm(id) {
+			currentEditId = id;
+			const f = {
+				name: document.getElementById('f-name'),
+				developer: document.getElementById('f-developer'),
+				space: document.getElementById('f-space'),
+				icon: document.getElementById('f-icon'),
+				summary: document.getElementById('f-summary'),
+				link: document.getElementById('f-link'),
+				help: document.getElementById('f-help'),
+				status: document.getElementById('f-status'),
+				type: document.getElementById('f-type'),
+				phone: document.getElementById('f-phone'),
+				tablet: document.getElementById('f-tablet'),
+				favorite: document.getElementById('f-favorite')
+			};
+			if (id) {
+				const app = allApps.find(a => a.id === id);
+				document.getElementById('form-title').textContent = 'Редактировать';
+				f.name.value = app.name || '';
+				f.developer.value = app.developer || '';
+				f.space.value = app.space || '';
+				f.icon.value = app.icon || '';
+				f.summary.value = app.summary || '';
+				f.link.value = app.link || '';
+				f.help.value = app.helpUrl || '';
+				f.status.value = app.status || 'wishlist';
+				f.type.value = app.type || 'app';
+				f.phone.checked = app.installedOn?.includes('phone') || false;
+				f.tablet.checked = app.installedOn?.includes('tablet') || false;
+				f.favorite.checked = app.isFavorite || false;
+			} else {
+				document.getElementById('form-title').textContent = 'Добавить приложение';
+				f.name.value = ''; f.developer.value = ''; f.space.value = '';
+				f.icon.value = '';
+				f.summary.value = ''; f.link.value = ''; f.help.value = '';
+				f.status.value = 'wishlist'; f.type.value = 'app';
+				f.phone.checked = false; f.tablet.checked = false; f.favorite.checked = false;
+			}
+			showScreen('form');
+		}
+
+		document.getElementById('f-save').addEventListener('click', () => {
+			const name = document.getElementById('f-name').value.trim();
+			if (!name) { alert('Введите название'); return; }
+			const installedOn = [];
+			if (document.getElementById('f-phone').checked) installedOn.push('phone');
+			if (document.getElementById('f-tablet').checked) installedOn.push('tablet');
+			const data = {
+				name,
+				developer: document.getElementById('f-developer').value.trim(),
+				space: document.getElementById('f-space').value.trim(),
+				icon: document.getElementById('f-icon').value.trim(),
+				summary: document.getElementById('f-summary').value.trim(),
+				link: document.getElementById('f-link').value.trim(),
+				helpUrl: document.getElementById('f-help').value.trim(),
+				status: document.getElementById('f-status').value,
+				type: document.getElementById('f-type').value,
+				installedOn,
+				isFavorite: document.getElementById('f-favorite').checked,
+				updatedAt: Date.now()
+			};
+			if (currentEditId) {
+				update(ref(db, 'apps/' + currentEditId), data);
+			} else {
+				data.createdAt = Date.now();
+				push(ref(db, 'apps'), data);
+			}
+			showScreen('home');
+		});
+
+		signInAnonymously(auth).then(() => {
+			onValue(ref(db, 'apps'), (snapshot) => {
+				const data = snapshot.val();
+				allApps = [];
+				if (data) {
+					Object.entries(data).forEach(([key, value]) => {
+						allApps.push({ id: key, ...value });
+					});
+				}
+				if (screens.section.classList.contains('active')) {
+					const title = document.getElementById('section-title').textContent;
+					if (title.includes('Wishlist')) renderSection('wishlist');
+					else if (title.includes('Установлено')) renderSection('installed');
+					else if (title.includes('Удалено')) renderSection('removed');
+					else if (title.includes('Избранное')) renderSection('favorite');
+				}
+				if (screens.all.classList.contains('active')) renderAll();
+			});
+		});
+	</script>
 </body>
 </html>
