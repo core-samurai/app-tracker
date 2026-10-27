@@ -827,12 +827,15 @@
 				updatedAt: Date.now()
 			};
 			if (currentEditId) {
-				update(ref(db, 'apps/' + currentEditId), data);
+				update(ref(db, 'apps/' + currentEditId), data).then(() => {
+					showScreen(previousScreen || 'home');
+				});
 			} else {
 				data.createdAt = Date.now();
-				push(ref(db, 'apps'), data);
+				push(ref(db, 'apps'), data).then(() => {
+					showScreen(previousScreen || 'home');
+				});
 			}
-			showScreen(previousScreen || 'home');
 		});
 
 		signInAnonymously(auth).then(() => {
