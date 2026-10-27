@@ -126,7 +126,28 @@
 			letter-spacing: 0.5px;
 			word-wrap: break-word; /* ← длинные названия ломаются */
 		}
-		.app-status {
+
+.app-meta-status {
+	display: inline-flex;
+	align-items: center;
+	padding: 0;
+	border: none;
+	background: none;
+	color: var(--md-primary);
+}
+
+.app-meta-status svg {
+	width: 18px;
+	height: 18px;
+	stroke: var(--md-primary);
+	fill: none;
+	stroke-width: 2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+/*
+.app-status {
 			display: flex;
 			align-items: center;
 			gap: 4px;
@@ -140,6 +161,7 @@
 			stroke-linecap: round;
 			stroke-linejoin: round;
 		}
+*/
 		.app-developer {
 			color: var(--md-on-surface);
 			font-size: 13px;
@@ -566,7 +588,6 @@
 					<div class="app-info">
 						<div class="app-header">
 							<div class="app-name">${app.name}</div>
-							<div class="app-status">${statusIcon}${favIcon}</div>
 						</div>
 						${app.developer ? `<div class="app-developer">${app.developer}</div>` : ''}
 					</div>
@@ -574,6 +595,8 @@
 				${app.summary ? `<div class="app-summary">${app.summary}</div>` : ''}
 
 				<div class="app-meta-row">
+					${statusIcon ? `<div class="app-meta-item app-meta-status">${statusIcon}</div>` : ''}
+					${favIcon ? `<div class="app-meta-item app-meta-status">${favIcon}</div>` : ''}
 					${app.installedOn?.includes('phone') ? `<div class="app-meta-item">Phone</div>` : ''}
 					${app.installedOn?.includes('tablet') ? `<div class="app-meta-item">Tablet</div>` : ''}
 					${app.space ? `<div class="app-meta-item">${app.space}</div>` : ''}
