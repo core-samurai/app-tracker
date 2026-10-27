@@ -24,7 +24,7 @@
 			background: var(--md-bg);
 			color: var(--md-on-surface);
 			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-			padding: 16px;
+			padding: 8px;
 			max-width: 600px;
 			margin: 0 auto;
 		}
@@ -82,30 +82,30 @@
 		.screen { display: none; }
 		.screen.active { display: block; }
 
-		.app-card {
-			background: var(--md-surface);
-			border: 1px solid var(--md-border);
-			border-radius: var(--md-radius-lg);
-			padding: 16px;
-			margin-bottom: 12px;
-		}
-		.app-card-header {
-			display: flex;
-			gap: 12px;
-			margin-bottom: 8px;
-		}
+.app-card {
+	background: var(--md-surface);
+	border: 1px solid var(--md-border);
+	border-radius: var(--md-radius-lg);
+	padding: 12px 8px;  /* было 16px */
+	margin-bottom: 8px; /* было 12px */
+}
+.app-card-header {
+	display: flex;
+	gap: 8px;  /* было 12px */
+	margin-bottom: 6px;
+}
 		.app-icon {
 			flex-shrink: 0;
-			width: 48px;
-			height: 48px;
+			width: 44px;
+			height: 44px;
 			border-radius: 8px;
 			object-fit: cover;
 			background: var(--md-surface-high);
 		}
 		.app-icon-placeholder {
 			flex-shrink: 0;
-			width: 48px;
-			height: 48px;
+			width: 44px;
+			height: 44px;
 			border-radius: 8px;
 			background: var(--md-surface-high);
 		}
@@ -139,7 +139,42 @@
 .app-meta-status svg {
 	width: 18px;
 	height: 18px;
-	stroke: var(--md-primary);
+	fill: none;
+	stroke-width: 2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+/* Пилюли — только для .pill */
+.app-meta-item.pill {
+	display: inline-flex;
+	align-items: center;
+	padding: 6px 14px;
+	border: 1px solid #4caf50;
+	border-radius: var(--md-radius-full);
+	color: #81c784;
+	background: rgba(76, 175, 80, 0.08);
+	font-size: 12px;
+	font-weight: 500;
+}
+
+/* Остальные — просто текст */
+.app-meta-item {
+	display: inline-flex;
+	align-items: center;
+	font-size: 12px;
+	color: var(--md-on-surface-variant);
+}
+
+/* Иконки статуса — без пилюли, только иконка */
+.app-meta-status {
+	padding: 0;
+	border: none;
+	background: none;
+}
+.app-meta-status svg {
+	width: 18px;
+	height: 18px;
 	fill: none;
 	stroke-width: 2;
 	stroke-linecap: round;
@@ -199,17 +234,7 @@
 	padding: 8px 0;
 }
 
-.app-meta-item {
-	display: inline-flex;
-	align-items: center;
-	padding: 6px 14px;
-	border: 1px solid #4caf50;          /* зелёная рамка */
-	border-radius: var(--md-radius-full); /* пилюля */
-	color: #81c784;                     /* зелёный текст */
-	background: rgba(76, 175, 80, 0.08); /* чуть зелёный фон */
-	font-size: 12px;
-	font-weight: 500;
-}
+
 
 		.app-actions {
 			display: flex;
@@ -595,11 +620,11 @@
 				${app.summary ? `<div class="app-summary">${app.summary}</div>` : ''}
 
 				<div class="app-meta-row">
+					${app.installedOn?.includes('phone') ? `<div class="app-meta-item pill">Phone</div>` : ''}
+					${app.installedOn?.includes('tablet') ? `<div class="app-meta-item pill">Tablet</div>` : ''}
+					${app.space ? `<div class="app-meta-item">${app.space}</div>` : ''}
 					${statusIcon ? `<div class="app-meta-item app-meta-status">${statusIcon}</div>` : ''}
 					${favIcon ? `<div class="app-meta-item app-meta-status">${favIcon}</div>` : ''}
-					${app.installedOn?.includes('phone') ? `<div class="app-meta-item">Phone</div>` : ''}
-					${app.installedOn?.includes('tablet') ? `<div class="app-meta-item">Tablet</div>` : ''}
-					${app.space ? `<div class="app-meta-item">${app.space}</div>` : ''}
 				</div>
 
 				<div class="app-actions">
