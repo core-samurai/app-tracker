@@ -490,6 +490,8 @@
 
 		let allApps = [];
 		let currentEditId = null;
+		let previousScreen = 'home';
+		let screenHistory = ['home'];
 
 		const ICONS = {
 			wishlist: `<svg viewBox="0 0 24 24" stroke="#FF9900"><path d="M12 2l3 7h7l-5.5 4.5 2 7.5-6.5-4.5-6.5 4.5 2-7.5-5.5-4.5h7z"/></svg>`,
@@ -550,16 +552,28 @@
 			form: document.getElementById('screen-form')
 		};
 
-		function showScreen(name) {
+		function showScreen(name, push = true) {
+			if (push) {
+				const current = Object.keys(screens).find(k => screens[k].classList.contains('active'));
+				if (current && current !== name) {
+					screenHistory.push(current);
+				}
+			}
 			Object.values(screens).forEach(s => s.classList.remove('active'));
 			screens[name].classList.add('active');
 			window.scrollTo(0, 0);
 		}
 
+		function goBack() {
+			screenHistory.pop();
+			const prev = screenHistory[screenHistory.length - 1] || 'home';
+			showScreen(prev, false);
+		}
+
 		document.querySelectorAll('[data-nav]').forEach(el => {
 			el.addEventListener('click', (e) => {
 				const nav = el.dataset.nav;
-				if (nav === 'home') { showScreen('home'); return; }
+				if (nav === 'home') { goBack(); return; }
 				if (nav === 'add') { openForm(null); return; }
 				if (nav === 'all') { renderAll(); showScreen('all'); return; }
 
@@ -746,6 +760,8 @@
 
 		function openForm(id) {
 			currentEditId = id;
+			const current = Object.keys(screens).find(k => screens[k].classList.contains('active'));
+			if (current && current !== 'form') previousScreen = current;
 			const f = {
 				name: document.getElementById('f-name'),
 				developer: document.getElementById('f-developer'),
@@ -816,7 +832,7 @@
 				data.createdAt = Date.now();
 				push(ref(db, 'apps'), data);
 			}
-			showScreen('home');
+			showScreen(previousScreen || 'home');
 		});
 
 		signInAnonymously(auth).then(() => {
