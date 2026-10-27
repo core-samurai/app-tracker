@@ -808,9 +808,11 @@
 		document.getElementById('f-save').addEventListener('click', () => {
 			const name = document.getElementById('f-name').value.trim();
 			if (!name) { alert('Введите название'); return; }
+
 			const installedOn = [];
 			if (document.getElementById('f-phone').checked) installedOn.push('phone');
 			if (document.getElementById('f-tablet').checked) installedOn.push('tablet');
+
 			const data = {
 				name,
 				developer: document.getElementById('f-developer').value.trim(),
@@ -826,15 +828,26 @@
 				isFavorite: document.getElementById('f-favorite').checked,
 				updatedAt: Date.now()
 			};
+
+			// Функция для принудительного рендера после сохранения
+			function refreshAfterSave() {
+				showScreen(previousScreen || 'home', false);
+				if (previousScreen === 'section') {
+					const title = document.getElementById('section-title').textContent;
+					if (title.includes('Wishlist')) renderSection('wishlist');
+					else if (title.includes('Установлено')) renderSection('installed');
+					else if (title.includes('Удалено')) renderSection('removed');
+					else if (title.includes('Избранное')) renderSection('favorite');
+				} else if (previousScreen === 'all') {
+					renderAll();
+				}
+			}
+
 			if (currentEditId) {
-				update(ref(db, 'apps/' + currentEditId), data).then(() => {
-					showScreen(previousScreen || 'home');
-				});
+				update(ref(db, 'apps/' + currentEditId), data).then(refreshAfterSave);
 			} else {
 				data.createdAt = Date.now();
-				push(ref(db, 'apps'), data).then(() => {
-					showScreen(previousScreen || 'home');
-				});
+				push(ref(db, 'apps'), data).then(refreshAfterSave);
 			}
 		});
 
